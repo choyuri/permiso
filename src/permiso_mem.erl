@@ -27,6 +27,23 @@
 
 -include("permiso.hrl").
 
+-type new_opts() :: [].
+-type state() :: #state{}.
+-type grant() :: #grant{}.
+-type group() :: #group{}.
+-type bucket() :: binary().
+-type key() :: binary().
+-type resource() :: bucket() | {bucket(), key()}.
+-type perm() :: string().
+-type perms() :: [perm()].
+-type user() :: #user{}.
+-type groupname() :: binary().
+-type groupnames() :: [groupnames()].
+-type username() :: binary().
+-type usernames() :: [username()].
+-type password() :: binary().
+
+-spec new(new_opts()) -> state().
 new(Opts) -> 
     Users = ets:new(users, []),
     Groups = ets:new(groups, []),
@@ -34,17 +51,20 @@ new(Opts) ->
 
 %% User Functions
 
+-spec user_list(state()) -> {ok, [usernames()]}.
 user_list(#state{users=Table}) ->
     Usernames = ets:foldl(fun ({Username, _}, AccIn) -> [Username|AccIn] end,
                           [], Table),
     {ok, Usernames}.
 
+-spec user_get(state(), username()) -> {ok, user()} | {error, notfound}.
 user_get(#state{users=Users}, Username) ->
     case ets:lookup(Users, Username) of
         [{Username, UserData}] -> {ok, UserData};
         [] -> {error, notfound}
     end.
 
+-spec user_add(state(), user()) -> {ok, state()} | {error, duplicate} | {error, term()}.
 user_add(State=#state{users=Users}, User=#user{username=Username}) ->
     case user_get(State, Username) of
         {ok, _ExistingUser} -> {error, duplicate};
@@ -53,12 +73,14 @@ user_add(State=#state{users=Users}, User=#user{username=Username}) ->
             {ok, State}
     end.
 
+-spec user_delete(state(), username()) -> {ok, state()}.
 user_delete(State, Username) ->
     with_existing_user(State, Username,
                        fun (Users, _ExistingUser) ->
                                ets:delete(Users, Username)
                        end).
 
+-spec user_grant(state(), username(), grant()) -> {ok, state()}.
 user_grant(State=#state{}, Username, Grant=#grant{}) ->
     with_existing_user(State, Username,
                        fun (Users, ExistingUser=#user{grants=CurrentGrants}) ->
@@ -67,6 +89,7 @@ user_grant(State=#state{}, Username, Grant=#grant{}) ->
                                upsert_user(Users, NewUser)
                        end).
 
+-spec user_revoke(state(), username(), grant()) -> {ok, state()}.
 user_revoke(State=#state{}, Username, Grant=#grant{}) ->
     with_existing_user(State, Username,
                        fun (Users, ExistingUser=#user{grants=CurrentGrants}) ->
@@ -75,6 +98,7 @@ user_revoke(State=#state{}, Username, Grant=#grant{}) ->
                                upsert_user(Users, NewUser)
                        end).
 
+-spec user_passwd(state(), username(), password()) -> {ok, state()}.
 user_passwd(State, Username, Password) ->
     with_existing_user(State, Username,
                        fun (Users, ExistingUser) ->
@@ -82,6 +106,7 @@ user_passwd(State, Username, Password) ->
                                upsert_user(Users, NewUser)
                        end).
 
+-spec user_join(state(), username(), groupname()) -> {ok, state()} | {error, notfound}.
 user_join(State, Username, Groupname) ->
     Fun = fun (Users, ExistingUser=#user{groups=CurrentGroups},
               Groups, ExistingGroup=#group{users=GroupUsers}) ->
@@ -96,6 +121,7 @@ user_join(State, Username, Groupname) ->
           end,
     with_user_and_group(State, Username, Groupname, Fun).
 
+-spec user_leave(state(), username(), groupname()) -> {ok, state()} | {error, notfound}.
 user_leave(State, Username, Groupname) ->
     Fun = fun (Users, ExistingUser=#user{groups=CurrentGroups},
               Groups, ExistingGroup=#group{users=GroupUsers}) ->
@@ -110,6 +136,7 @@ user_leave(State, Username, Groupname) ->
           end,
     with_user_and_group(State, Username, Groupname, Fun).
 
+-spec user_auth(state(), username(), password()) -> ok | {error, term()}.
 user_auth(State, Username, Password) ->
     with_existing_user(State, Username,
                        fun (_Users, #user{password=UPassword}) ->
@@ -118,6 +145,7 @@ user_auth(State, Username, Password) ->
                                end
                        end).
 
+-spec user_allowed(state(), username(), resource(), perms()) -> boolean().
 user_allowed(State, Username, Resource, Permissions) ->
     WithUser = fun (_Users, #user{grants=Grants, groups=Groups}) ->
                        case permiso:match_permissions(Grants, Resource, Permissions) of
@@ -129,6 +157,7 @@ user_allowed(State, Username, Resource, Permissions) ->
                end,
     with_existing_user(State, Username, WithUser).
 
+-spec clear(state()) -> {ok, state()}.
 clear(State=#state{users=Users, groups=Groups}) ->
     ets:delete_all_objects(Users),
     ets:delete_all_objects(Groups),
@@ -136,15 +165,18 @@ clear(State=#state{users=Users, groups=Groups}) ->
 
 %% Group Functions
 
+-spec group_list(state()) -> {ok, groupnames()}.
 group_list(#state{groups=Table}) ->
     {ok, ets:tab2list(Table)}.
 
+-spec group_get(state(), groupname()) -> {ok, group()} | {error, notfound}.
 group_get(#state{groups=Groups}, Groupname) ->
     case ets:lookup(Groups, Groupname) of
         [{Groupname, GroupData}] -> {ok, GroupData};
         [] -> {error, notfound}
     end.
 
+-spec group_add(state(), group()) -> {ok, state()}.
 group_add(State=#state{groups=Groups}, Group=#group{name=Groupname}) ->
     case ets:lookup(Groups, Groupname) of
         {ok, _ExistingGroup} -> {error, duplicate};
@@ -153,11 +185,13 @@ group_add(State=#state{groups=Groups}, Group=#group{name=Groupname}) ->
             {ok, State}
     end.
 
+-spec group_delete(state(), groupname()) -> {ok, state()}.
 group_delete(State, Groupname) ->
     with_existing_group(State, Groupname, fun (Groups, _ExistingGroup) ->
                                                   ets:delete(Groups, Groupname)
                                           end).
 
+-spec group_grant(state(), groupname(), grant()) -> {ok, state()}.
 group_grant(State, Groupname, Grant=#grant{}) ->
     WithGroup = fun (Groups, ExistingGroup=#group{grants=Grants}) ->
                         NewGrants = [Grant|Grants],
@@ -166,6 +200,7 @@ group_grant(State, Groupname, Grant=#grant{}) ->
                 end,
     with_existing_group(State, Groupname, WithGroup).
 
+-spec group_revoke(state(), groupname(), grant()) -> {ok, state()}.
 group_revoke(State, Groupname, Grant) ->
     WithGroup = fun (Groups, ExistingGroup=#group{grants=Grants}) ->
                         NewGrants = lists:delete(Grant, Grants),

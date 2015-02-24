@@ -29,11 +29,29 @@
 % riak_core_security ?TOMBSTONE
 -define(TOMBSTONE, '$deleted').
 
+-type new_opts() :: [].
+-type state() :: #state{}.
+-type grant() :: #grant{}.
+-type group() :: #group{}.
+-type bucket() :: binary().
+-type key() :: binary().
+-type resource() :: bucket() | {bucket(), key()}.
+-type perm() :: string().
+-type perms() :: [perm()].
+-type user() :: #user{}.
+-type groupname() :: binary().
+-type groupnames() :: [groupnames()].
+-type username() :: binary().
+-type usernames() :: [username()].
+-type password() :: binary().
+
+-spec new(new_opts()) -> state().
 new(Opts) -> 
     parse_opts(Opts, #state{}).
 
 %% User Functions
 
+-spec user_list(state()) -> {ok, [usernames()]}.
 user_list(#state{}) ->
     Usernames = fold_users(fun({_Username, [?TOMBSTONE]}, Acc) ->
                                    Acc;
@@ -42,6 +60,7 @@ user_list(#state{}) ->
                            end),
     {ok, Usernames}.
 
+-spec user_get(state(), username()) -> {ok, user()} | {error, notfound}.
 user_get(#state{}, Username) ->
     case user_info(Username) of
         {found, {FGroups}} ->
@@ -53,6 +72,7 @@ user_get(#state{}, Username) ->
     end.
 
 %% XXX ignores grants and extra
+-spec user_add(state(), user()) -> {ok, state()} | {error, duplicate} | {error, term()}.
 user_add(State=#state{}, #user{username=Username, password=Password,
                                groups=Groups}) ->
     case create_user(Username, Password, Groups) of
@@ -61,24 +81,29 @@ user_add(State=#state{}, #user{username=Username, password=Password,
         Other -> Other
     end.
 
+-spec user_delete(state(), username()) -> {ok, state()}.
 user_delete(State, Username) ->
     riak_core_security:del_user(Username),
     {ok, State}.
 
+-spec user_grant(state(), username(), grant()) -> {ok, state()}.
 user_grant(State=#state{}, Username,
            #grant{resource={Bucket, Key}, permissions=Perms}) ->
     grant(Username, Bucket, Key, Perms),
     {ok, State}.
 
+-spec user_revoke(state(), username(), grant()) -> {ok, state()}.
 user_revoke(State=#state{}, Username,
            #grant{resource={Bucket, Key}, permissions=Perms}) ->
     revoke(Username, Bucket, Key, Perms),
     {ok, State}.
 
+-spec user_passwd(state(), username(), password()) -> {ok, state()}.
 user_passwd(State, Username, Password) ->
     riak_core_security:alter_user(Username, [{"password", Password}]),
     {ok, State}.
 
+-spec user_join(state(), username(), groupname()) -> {ok, state()} | {error, notfound}.
 user_join(State, Username, Groupname) ->
     case user_info(Username) of
         {found, {Groups}} ->
@@ -94,6 +119,7 @@ user_join(State, Username, Groupname) ->
             {error, notfound}
     end.
 
+-spec user_leave(state(), username(), groupname()) -> {ok, state()} | {error, notfound}.
 user_leave(State, Username, Groupname) ->
     case user_info(Username) of
         {found, {Groups}} ->
@@ -109,13 +135,15 @@ user_leave(State, Username, Groupname) ->
             {error, notfound}
     end.
 
+-spec user_auth(state(), username(), password()) -> ok | {error, term()}.
 user_auth(_State, Username, Password) ->
     Source = [{ip, {127, 0, 0, 1}}],
     case riak_core_security:authenticate(Username, Password, Source) of
         {ok, _Ctx} -> ok;
-        Error -> {error, Error}
+        {error, _Reason}=Error -> Error
     end.
 
+-spec user_allowed(state(), username(), resource(), perms()) -> boolean().
 user_allowed(_State, Username, Resource, Perms) ->
     case get_security_context(Username) of
         {ok, Ctx} ->
@@ -128,11 +156,14 @@ user_allowed(_State, Username, Resource, Perms) ->
 
 %% _Group Functions
 
+-spec group_list(state()) -> {ok, groupnames()}.
 group_list(#state{}) ->
-    fold_groups(fun ({Groupname, _Perms}, AccIn) ->
-                        [Groupname|AccIn]
-                end).
+    Groups = fold_groups(fun ({Groupname, _Perms}, AccIn) ->
+                                 [Groupname|AccIn]
+                         end),
+    {ok, Groups}.
 
+-spec group_get(state(), groupname()) -> {ok, group()} | {error, notfound}.
 group_get(#state{}, Groupname) ->
     Acc0 = #group{name=Groupname},
     case fold_group(fun (_, AccIn) -> AccIn end, Groupname, Acc0) of
@@ -144,19 +175,23 @@ group_get(#state{}, Groupname) ->
             {error, notfound}
     end.
 
+-spec group_add(state(), group()) -> {ok, state()}.
 group_add(State=#state{}, #group{name=Groupname}) ->
     riak_core_security:add_group(Groupname, []),
     {ok, State}.
 
+-spec group_delete(state(), groupname()) -> {ok, state()}.
 group_delete(State, Groupname) ->
     riak_core_security:del_group(Groupname),
     {ok, State}.
 
+-spec group_grant(state(), groupname(), grant()) -> {ok, state()}.
 group_grant(State, Groupname,
             #grant{resource={Bucket, Key}, permissions=Perms}) ->
     grant(Groupname, Bucket, Key, Perms),
     {ok, State}.
 
+-spec group_revoke(state(), groupname(), grant()) -> {ok, state()}.
 group_revoke(State, Groupname,
             #grant{resource={Bucket, Key}, permissions=Perms}) ->
     revoke(Groupname, Bucket, Key, Perms),
