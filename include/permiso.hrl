@@ -1,0 +1,3 @@
+-record(user, {username, password, grants, groups, extra=nil}).
+-record(group, {name, users, grants, extra}).
+-record(grant, {resource, permissions}).

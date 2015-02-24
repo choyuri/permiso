@@ -1,0 +1,14 @@
+{application, permiso,
+ [
+  {description, "An Erlang permiso library"},
+  {vsn, "1"},
+  {modules, [
+             permiso
+            ]},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {env, []}
+ ]}.
