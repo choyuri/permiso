@@ -44,7 +44,7 @@ user_list(#state{}) ->
 
 user_get(#state{}, Username) ->
     case user_info(Username) of
-        {ok, {FGroups}} ->
+        {found, {FGroups}} ->
             Grants = user_grants(Username),
             User = #user{username=Username, grants=Grants, groups=FGroups},
             {ok, User};
@@ -81,7 +81,7 @@ user_passwd(State, Username, Password) ->
 
 user_join(State, Username, Groupname) ->
     case user_info(Username) of
-        {ok, {Groups}} ->
+        {found, {Groups}} ->
             IsMember = lists:member(Groupname, Groups),
             if IsMember -> {ok, State};
                true ->
@@ -96,7 +96,7 @@ user_join(State, Username, Groupname) ->
 
 user_leave(State, Username, Groupname) ->
     case user_info(Username) of
-        {ok, {Groups}} ->
+        {found, {Groups}} ->
             IsMember = lists:member(Groupname, Groups),
             if IsMember ->
                    NewGroups = lists:delete(Groupname, Groups),
@@ -185,10 +185,10 @@ fold_key(Fun, Key, Accum, Type) ->
     end.
 
 fold_user(Fun, Key, Accum) ->
-    fold_key(Fun, Key, Accum, <<"user">>).
+    fold_key(Fun, Key, Accum, <<"users">>).
 
 fold_group(Fun, Key, Accum) ->
-    fold_key(Fun, Key, Accum, <<"group">>).
+    fold_key(Fun, Key, Accum, <<"groups">>).
 
 merge_grant(Dict, Bucket, Key, Perms) ->
     SetPerms = sets:from_list(Perms),
@@ -209,7 +209,7 @@ user_grants(Username) ->
                         Accum
                 end, DPerm0, Grants),
     dict:fold(fun (Key, Val, AccIn) ->
-                      [#grant{resource=Key, permissions=Val}|AccIn]
+                      [#grant{resource=Key, permissions=sets:to_list(Val)}|AccIn]
               end, [], DPerm1).
 
 group_grants(Groupname) ->
@@ -303,8 +303,13 @@ check_authorized(Perm, Thing, Ctx) ->
 
 user_info(Username) ->
     IGs = sets:new(),
-    fold_user(fun ({"groups", Groups}, {GsIn}) ->
-                      SGroups = sets:from_list(Groups),
-                      GsOut = sets:union(GsIn, SGroups),
-                      {GsOut}
-              end, Username, {IGs}).
+    Res = fold_user(fun ({"groups", Groups}, {GsIn}) ->
+                            SGroups = sets:from_list(Groups),
+                            GsOut = sets:union(GsIn, SGroups),
+                            {GsOut};
+                        (_, AccIn) -> AccIn
+                    end, Username, {IGs}),
+    case Res of
+        {found, {OGs}} -> {found, {sets:to_list(OGs)}};
+        Other -> Other
+    end.
