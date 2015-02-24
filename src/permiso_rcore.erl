@@ -48,7 +48,7 @@ user_get(#state{}, Username) ->
             Grants = user_grants(Username),
             User = #user{username=Username, grants=Grants, groups=FGroups},
             {ok, User};
-        notfound ->
+        {notfound, _Acc0} ->
             {error, notfound}
     end.
 
@@ -90,7 +90,8 @@ user_join(State, Username, Groupname) ->
                                                  [{"groups", NewGroups}]),
                    {ok, State}
             end;
-        Error -> Error
+        {notfound, _Acc0} ->
+            {error, notfound}
     end.
 
 user_leave(State, Username, Groupname) ->
@@ -104,7 +105,8 @@ user_leave(State, Username, Groupname) ->
                true ->
                    {ok, State}
             end;
-        Error -> Error
+        {notfound, _Acc0} ->
+            {error, notfound}
     end.
 
 user_auth(_State, Username, Password) ->
@@ -305,4 +307,4 @@ user_info(Username) ->
                       SGroups = sets:from_list(Groups),
                       GsOut = sets:union(GsIn, SGroups),
                       {GsOut}
-              end, {IGs}, Username).
+              end, Username, {IGs}).
