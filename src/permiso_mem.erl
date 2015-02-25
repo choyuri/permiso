@@ -77,7 +77,8 @@ user_add(State=#state{users=Users}, User=#user{username=Username}) ->
 user_delete(State, Username) ->
     with_existing_user(State, Username,
                        fun (Users, _ExistingUser) ->
-                               ets:delete(Users, Username)
+                               ets:delete(Users, Username),
+                               {ok, State}
                        end).
 
 -spec user_grant(state(), username(), grant()) -> {ok, state()}.
@@ -86,7 +87,8 @@ user_grant(State=#state{}, Username, Grant=#grant{}) ->
                        fun (Users, ExistingUser=#user{grants=CurrentGrants}) ->
                                NewGrants = put_grant(Grant, CurrentGrants),
                                NewUser = ExistingUser#user{grants=NewGrants},
-                               upsert_user(Users, NewUser)
+                               upsert_user(Users, NewUser),
+                               {ok, State}
                        end).
 
 -spec user_revoke(state(), username(), grant()) -> {ok, state()}.
@@ -95,7 +97,8 @@ user_revoke(State=#state{}, Username, Grant=#grant{}) ->
                        fun (Users, ExistingUser=#user{grants=CurrentGrants}) ->
                                NewGrants = del_grant(Grant, CurrentGrants),
                                NewUser = ExistingUser#user{grants=NewGrants},
-                               upsert_user(Users, NewUser)
+                               upsert_user(Users, NewUser),
+                               {ok, State}
                        end).
 
 -spec user_passwd(state(), username(), password()) -> {ok, state()}.
@@ -103,7 +106,8 @@ user_passwd(State, Username, Password) ->
     with_existing_user(State, Username,
                        fun (Users, ExistingUser) ->
                                NewUser = ExistingUser#user{password=Password},
-                               upsert_user(Users, NewUser)
+                               upsert_user(Users, NewUser),
+                               {ok, State}
                        end).
 
 -spec user_join(state(), username(), groupname()) -> {ok, state()} | {error, notfound}.
@@ -117,7 +121,8 @@ user_join(State, Username, Groupname) ->
 
                   NewUsers = [Username|lists:delete(Username, GroupUsers)],
                   NewGroup = ExistingGroup#group{users=NewUsers},
-                  upsert_group(Groups, NewGroup)
+                  upsert_group(Groups, NewGroup),
+                  {ok, State}
           end,
     with_user_and_group(State, Username, Groupname, Fun).
 
@@ -132,7 +137,8 @@ user_leave(State, Username, Groupname) ->
 
                   NewUsers = lists:delete(Username, GroupUsers),
                   NewGroup = ExistingGroup#group{users=NewUsers},
-                  upsert_group(Groups, NewGroup)
+                  upsert_group(Groups, NewGroup),
+                  {ok, State}
           end,
     with_user_and_group(State, Username, Groupname, Fun).
 
@@ -146,7 +152,7 @@ user_auth(State, Username, Password) ->
                        end).
 
 -spec user_allowed(state(), username(), resource(), perms()) -> boolean().
-user_allowed(State, Username, Resource, Permissions) ->
+user_allowed(State=#state{}, Username, Resource, Permissions) ->
     WithUser = fun (_Users, #user{grants=Grants, groups=Groups}) ->
                        case permiso:match_permissions(Grants, Resource, Permissions) of
                            [] -> true;
@@ -176,19 +182,20 @@ group_get(#state{groups=Groups}, Groupname) ->
         [] -> {error, notfound}
     end.
 
--spec group_add(state(), group()) -> {ok, state()}.
+-spec group_add(state(), group()) -> {ok, state()} | {error, duplicate}.
 group_add(State=#state{groups=Groups}, Group=#group{name=Groupname}) ->
     case ets:lookup(Groups, Groupname) of
-        {ok, _ExistingGroup} -> {error, duplicate};
-        {error, notfound} ->
-            upsert_group(State, Group),
+        [{Groupname, _ExistingGroup}] -> {error, duplicate};
+        [] ->
+            upsert_group(Groups, Group),
             {ok, State}
     end.
 
 -spec group_delete(state(), groupname()) -> {ok, state()}.
 group_delete(State, Groupname) ->
     with_existing_group(State, Groupname, fun (Groups, _ExistingGroup) ->
-                                                  ets:delete(Groups, Groupname)
+                                                  ets:delete(Groups, Groupname),
+                                                  {ok, State}
                                           end).
 
 -spec group_grant(state(), groupname(), grant()) -> {ok, state()}.
@@ -196,7 +203,8 @@ group_grant(State, Groupname, Grant=#grant{}) ->
     WithGroup = fun (Groups, ExistingGroup=#group{grants=Grants}) ->
                         NewGrants = [Grant|Grants],
                         NewGroup = ExistingGroup#group{grants=NewGrants},
-                        upsert_group(Groups, NewGroup)
+                        upsert_group(Groups, NewGroup),
+                        {ok, State}
                 end,
     with_existing_group(State, Groupname, WithGroup).
 
@@ -205,7 +213,8 @@ group_revoke(State, Groupname, Grant) ->
     WithGroup = fun (Groups, ExistingGroup=#group{grants=Grants}) ->
                         NewGrants = lists:delete(Grant, Grants),
                         NewGroup = ExistingGroup#group{grants=NewGrants},
-                        upsert_group(Groups, NewGroup)
+                        upsert_group(Groups, NewGroup),
+                        {ok, State}
                 end,
     with_existing_group(State, Groupname, WithGroup).
 
@@ -218,24 +227,22 @@ parse_opts([], State) -> State.
 with_existing_user(State=#state{users=Users}, Username, Fun) ->
     case user_get(State, Username) of
         {ok, ExistingUser} ->
-            Fun(Users, ExistingUser),
-            {ok, State};
+            Fun(Users, ExistingUser);
         {error, notfound}=Reason -> Reason
     end.
 
 with_existing_group(State=#state{groups=Groups}, Groupname, Fun) ->
     case group_get(State, Groupname) of
         {ok, ExistingGroup} ->
-            Fun(Groups, ExistingGroup),
-            {ok, State};
+            Fun(Groups, ExistingGroup);
         {error, notfound}=Reason -> Reason
     end.
 
 with_user_and_group(State, Username, Groupname, Fun) ->
     WithUser = fun (Users, ExistingUser) ->
                        WithGroup = fun (Groups, ExistingGroup) ->
-                                    Fun(Users, ExistingUser,
-                                        Groups, ExistingGroup)
+                                    Fun(Users, ExistingUser, Groups,
+                                        ExistingGroup)
                                    end,
                        R = with_existing_group(State, Groupname, WithGroup),
                        notfound_to(R, group_notfound)

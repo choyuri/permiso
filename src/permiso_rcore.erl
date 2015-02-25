@@ -81,8 +81,8 @@ user_add(State=#state{}, #user{username=Username, password=Password,
         Other -> Other
     end.
 
--spec user_delete(state(), username()) -> {ok, state()}.
-user_delete(State, Username) ->
+-spec user_delete(state(), string()) -> {ok, state()}.
+user_delete(State=#state{}, Username) ->
     riak_core_security:del_user(Username),
     {ok, State}.
 
@@ -98,13 +98,13 @@ user_revoke(State=#state{}, Username,
     revoke(Username, Bucket, Key, Perms),
     {ok, State}.
 
--spec user_passwd(state(), username(), password()) -> {ok, state()}.
-user_passwd(State, Username, Password) ->
+-spec user_passwd(state(), string(), password()) -> {ok, state()}.
+user_passwd(State=#state{}, Username, Password) ->
     riak_core_security:alter_user(Username, [{"password", Password}]),
     {ok, State}.
 
 -spec user_join(state(), username(), groupname()) -> {ok, state()} | {error, notfound}.
-user_join(State, Username, Groupname) ->
+user_join(State=#state{}, Username, Groupname) ->
     case user_info(Username) of
         {found, {Groups}} ->
             IsMember = lists:member(Groupname, Groups),
@@ -120,7 +120,7 @@ user_join(State, Username, Groupname) ->
     end.
 
 -spec user_leave(state(), username(), groupname()) -> {ok, state()} | {error, notfound}.
-user_leave(State, Username, Groupname) ->
+user_leave(State=#state{}, Username, Groupname) ->
     case user_info(Username) of
         {found, {Groups}} ->
             IsMember = lists:member(Groupname, Groups),
@@ -136,7 +136,7 @@ user_leave(State, Username, Groupname) ->
     end.
 
 -spec user_auth(state(), username(), password()) -> ok | {error, term()}.
-user_auth(_State, Username, Password) ->
+user_auth(#state{}, Username, Password) ->
     Source = [{ip, {127, 0, 0, 1}}],
     case riak_core_security:authenticate(Username, Password, Source) of
         {ok, _Ctx} -> ok;
@@ -144,7 +144,7 @@ user_auth(_State, Username, Password) ->
     end.
 
 -spec user_allowed(state(), username(), resource(), perms()) -> boolean().
-user_allowed(_State, Username, Resource, Perms) ->
+user_allowed(#state{}, Username, Resource, Perms) ->
     case get_security_context(Username) of
         {ok, Ctx} ->
             case check_authorized(Perms, Resource, Ctx) of
@@ -180,8 +180,8 @@ group_add(State=#state{}, #group{name=Groupname}) ->
     riak_core_security:add_group(Groupname, []),
     {ok, State}.
 
--spec group_delete(state(), groupname()) -> {ok, state()}.
-group_delete(State, Groupname) ->
+-spec group_delete(state(), string()) -> {ok, state()}.
+group_delete(State=#state{}, Groupname) ->
     riak_core_security:del_group(Groupname),
     {ok, State}.
 
