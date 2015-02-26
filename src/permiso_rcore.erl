@@ -352,8 +352,5 @@ wrap_ok(State, ok) -> {ok, State};
 wrap_ok(_State, Other) -> Other.
 
 check_ctx_authorized(Perms, Resource, Ctx) ->
-    case check_authorized(Perms, Resource, Ctx) of
-        ok ->  true;
-        _Error -> false
-    end.
-
+    lists:all(fun (Perm) -> check_authorized(Perm, Resource, Ctx) == ok end,
+              Perms).
