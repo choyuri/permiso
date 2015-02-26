@@ -344,10 +344,10 @@ wrap_ok(State, ok) -> {ok, State};
 wrap_ok(_State, Other) -> Other.
 
 check_ctx_authorized(Perms, Resource, Ctx) ->
-    RPerms = lists:map(fun (Perm) -> {Resource, Perm} end, Perms),
+    RPerms = lists:map(fun (Perm) -> {Perm, Resource} end, Perms),
     case riak_core_security:check_permissions(RPerms, Ctx) of
         {true, _NewCtx} ->
             true;
-        _Other ->
+        {false, _Reason, _NewCtx} ->
             false
     end.
