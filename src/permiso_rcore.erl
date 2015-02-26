@@ -1,8 +1,6 @@
 -module(permiso_rcore).
 -behaviour(permiso).
 
-%% XXX match return values from riak_core calls
-
 -export([new/1]).
 
 -ignore_xref([new/1]).
@@ -85,8 +83,7 @@ user_add(State=#state{}, #user{username=Username, password=Password,
 
 -spec user_delete(state(), string()) -> {ok, state()}.
 user_delete(State=#state{}, Username) ->
-    riak_core_security:del_user(Username),
-    {ok, State}.
+    wrap_ok(State, riak_core_security:del_user(Username)).
 
 -spec user_grant(state(), username(), grant()) -> {ok, state()}.
 user_grant(State=#state{}, Username,
@@ -100,10 +97,11 @@ user_revoke(State=#state{}, Username,
     revoke(Username, Bucket, Key, Perms),
     {ok, State}.
 
--spec user_passwd(state(), string(), password()) -> {ok, state()}.
+-spec user_passwd(state(), string(), password()) -> {ok, state()} | {error, term()}.
 user_passwd(State=#state{}, Username, Password) ->
-    riak_core_security:alter_user(Username, [{"password", Password}]),
-    {ok, State}.
+    wrap_ok(State,
+            riak_core_security:alter_user(Username, [{"password", Password}])).
+
 
 -spec user_join(state(), username(), groupname()) -> {ok, state()} | {error, notfound}.
 user_join(State=#state{}, Username, Groupname) ->
@@ -113,9 +111,8 @@ user_join(State=#state{}, Username, Groupname) ->
             if IsMember -> {ok, State};
                true ->
                    NewGroups = [Groupname|Groups],
-                   riak_core_security:alter_user(Username,
-                                                 [{"groups", NewGroups}]),
-                   {ok, State}
+                   wrap_ok(State, riak_core_security:alter_user(Username,
+                                                                [{"groups", NewGroups}]))
             end;
         {notfound, _Acc0} ->
             {error, notfound}
@@ -128,8 +125,8 @@ user_leave(State=#state{}, Username, Groupname) ->
             IsMember = lists:member(Groupname, Groups),
             if IsMember ->
                    NewGroups = lists:delete(Groupname, Groups),
-                   riak_core_security:alter_user(Username,
-                                                 [{"groups", NewGroups}]);
+                   wrap_ok(State, riak_core_security:alter_user(Username,
+                                                                [{"groups", NewGroups}]));
                true ->
                    {ok, State}
             end;
@@ -191,13 +188,11 @@ group_get(#state{}, Groupname) ->
 
 -spec group_add(state(), group()) -> {ok, state()}.
 group_add(State=#state{}, #group{name=Groupname}) ->
-    riak_core_security:add_group(Groupname, []),
-    {ok, State}.
+    wrap_ok(State, riak_core_security:add_group(Groupname, [])).
 
 -spec group_delete(state(), string()) -> {ok, state()}.
 group_delete(State=#state{}, Groupname) ->
-    riak_core_security:del_group(Groupname),
-    {ok, State}.
+    wrap_ok(State, riak_core_security:del_group(Groupname)).
 
 -spec group_grant(state(), groupname(), grant()) -> {ok, state()}.
 group_grant(State, Groupname,
@@ -358,3 +353,6 @@ user_info(Username) ->
         {found, {OGs}} -> {found, {sets:to_list(OGs)}};
         Other -> Other
     end.
+
+wrap_ok(State, ok) -> {ok, State};
+wrap_ok(_State, Other) -> Other.
