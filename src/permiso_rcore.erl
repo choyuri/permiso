@@ -137,11 +137,11 @@ user_leave(State=#state{}, Username, Groupname) ->
             {error, notfound}
     end.
 
--spec user_auth(state(), username(), password()) -> ok | {error, term()}.
+-spec user_auth(state(), username(), password()) -> {ok, user_context()} | {error, term()}.
 user_auth(#state{}, Username, Password) ->
     Source = [{ip, {127, 0, 0, 1}}],
     case riak_core_security:authenticate(Username, Password, Source) of
-        {ok, _Ctx} -> ok;
+        {ok, Ctx} -> {ok, {ctx, Ctx}};
         {error, _Reason}=Error -> Error
     end.
 

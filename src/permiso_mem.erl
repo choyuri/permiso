@@ -144,11 +144,11 @@ user_leave(State, Username, Groupname) ->
           end,
     with_user_and_group(State, Username, Groupname, Fun).
 
--spec user_auth(state(), username(), password()) -> ok | {error, term()}.
+-spec user_auth(state(), username(), password()) -> {ok, user_context()} | {error, term()}.
 user_auth(State, Username, Password) ->
     with_existing_user(State, Username,
-                       fun (_Users, #user{password=UPassword}) ->
-                               if UPassword =:= Password -> ok;
+                       fun (_Users, User=#user{password=UPassword}) ->
+                               if UPassword =:= Password -> {ok, User};
                                   true -> {error, unauthorized}
                                end
                        end).

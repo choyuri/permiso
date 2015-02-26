@@ -90,7 +90,7 @@ user_join(State=#state{child=Child, handler=Mod}, Username, Groupname) ->
 user_leave(State=#state{child=Child, handler=Mod}, Username, Groupname) ->
     update_child(State, Mod:user_leave(Child, Username, Groupname)).
 
--spec user_auth(state(), username(), password()) -> ok | {error, term()}.
+-spec user_auth(state(), username(), password()) -> {ok, user_context()} | {error, term()}.
 user_auth(#state{}, _Username, "") ->
     {error, empty_password};
 user_auth(#state{}, _Username, <<"">>) ->
@@ -104,7 +104,7 @@ user_auth(#state{child=Child, handler=Mod, host=Host, port=Port,
             case eldap:simple_bind(Pid, DN, Password) of
                 ok ->
                     maybe_setup_user(Mod, Child, Username, Password, OnUserCreated),
-                    ok;
+                    Mod:user_context(Child, Username);
                 Other ->
                     lager:info("Error authenticating user ~p: ~p",
                                [Username, Other])
