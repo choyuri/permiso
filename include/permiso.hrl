@@ -1,3 +1,3 @@
--record(user, {username, password, grants, groups, extra=nil}).
--record(group, {name, users, grants, extra}).
+-record(user, {username, password, grants=[], groups=[], extra=nil}).
+-record(group, {name, users=[], grants=[], extra=nil}).
 -record(grant, {resource, permissions}).
