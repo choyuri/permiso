@@ -152,12 +152,6 @@ user_allowed(#state{}, Username, Resource, Perms) ->
         {error, notfound} -> false
     end.
 
-check_ctx_authorized(Perms, Resource, Ctx) ->
-    case check_authorized(Perms, Resource, Ctx) of
-        ok ->  true;
-        _Error -> false
-    end.
-
 -spec user_context(state(), username()) -> {ok, user_context()} | {error, notfound}.
 user_context(_State, Username) ->
     case get_security_context(Username) of
@@ -356,3 +350,10 @@ user_info(Username) ->
 
 wrap_ok(State, ok) -> {ok, State};
 wrap_ok(_State, Other) -> Other.
+
+check_ctx_authorized(Perms, Resource, Ctx) ->
+    case check_authorized(Perms, Resource, Ctx) of
+        ok ->  true;
+        _Error -> false
+    end.
+
