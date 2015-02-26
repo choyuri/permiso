@@ -291,7 +291,7 @@ grant(Role, Bucket, Key, Permission) when not is_list(Permission) ->
     grant(Role, Bucket, Key, [Permission]);
 
 grant(<<"*">>, Bucket, any, Perms) ->
-    riak_core_security:add_grant(all, Bucket, [Perms]);
+    riak_core_security:add_grant(all, Bucket, Perms);
 
 grant(Role, Bucket, any, Perms) ->
     riak_core_security:add_grant([Role], Bucket, Perms);
