@@ -32,6 +32,8 @@ behaviour_info(callbacks) ->
      %{user_free_resource, 4},
      %{user_resource_stat, 2},
 
+     {resource_get, 2},
+
      {group_list, 1},
      {group_get, 2},
      {group_add, 2},

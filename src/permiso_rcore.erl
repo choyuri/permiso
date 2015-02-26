@@ -9,6 +9,8 @@
          user_revoke/3, user_passwd/3, user_join/3, user_leave/3, user_auth/3,
          user_allowed/4, user_context/2,
 
+         resource_get/2,
+
          group_list/1, group_get/2, group_add/2, group_delete/2, group_grant/3,
          group_revoke/3]).
 
@@ -33,7 +35,8 @@
 -type group() :: #group{}.
 -type bucket() :: binary().
 -type key() :: binary().
--type resource() :: bucket() | {bucket(), key()}.
+-type resource() :: bucket() | {bucket(), key()} | {bucket(), any}.
+-type resource_data() :: #resource{}.
 -type perm() :: string().
 -type perms() :: [perm()].
 -type user() :: #user{}.
@@ -159,7 +162,7 @@ user_context(_State, Username) ->
         Other -> Other
     end.
 
-%% _Group Functions
+%% Group Functions
 
 -spec group_list(state()) -> {ok, groupnames()}.
 group_list(#state{}) ->
@@ -199,6 +202,21 @@ group_revoke(State, Groupname,
             #grant{resource={Bucket, Key}, permissions=Perms}) ->
     revoke(Groupname, Bucket, Key, Perms),
     {ok, State}.
+
+%% Resource Functions
+
+-spec resource_get(state(), resource()) -> {ok, resource_data()}.
+resource_get(#state{}, {Bucket, Stream}=Id) ->
+    UserPermsRaw = user_grants_for(Bucket, Stream),
+    GroupPermsRaw = group_grants_for(Bucket, Stream),
+    FormatGrants = fun ({Name, _Bucket, _Stream, Perms}) -> {Name, Perms} end,
+    UserPerms = lists:map(FormatGrants, UserPermsRaw),
+    GroupPerms = lists:map(FormatGrants, GroupPermsRaw),
+    Resource = #resource{id=Id, user_grants=UserPerms, group_grants=GroupPerms},
+    {ok, Resource};
+
+resource_get(State, Bucket) ->
+    resource_get(State, {Bucket, any}).
 
 %% Internal
 
@@ -351,3 +369,25 @@ check_ctx_authorized(Perms, Resource, Ctx) ->
         {false, _Reason, _NewCtx} ->
             false
     end.
+
+grants_for(QBucket, any, Type) ->
+    riak_core_metadata:fold(fun({_, [?TOMBSTONE]}, Acc) -> Acc;
+                                ({{Name, Bucket}, [Perms]}, Acc) when QBucket =:= Bucket ->
+                                    [{Name, Bucket, any, Perms}|Acc];
+                               (_, Acc) -> Acc
+                            end, [], {<<"security">>, Type});
+
+grants_for(QBucket, QStream, Type) ->
+    riak_core_metadata:fold(fun({_, [?TOMBSTONE]}, Acc) -> Acc;
+                               ({{Name, {Bucket, Stream}}, [Perms]}, Acc)
+                                 when QBucket =:= Bucket andalso QStream =:= Stream ->
+                                    [{Name, Bucket, Stream, Perms}|Acc];
+                               (_, Acc) -> Acc
+                            end, [], {<<"security">>, Type}).
+
+group_grants_for(QBucket, QStream) ->
+    grants_for(QBucket, QStream, <<"groupgrants">>).
+
+user_grants_for(QBucket, QStream) ->
+    grants_for(QBucket, QStream, <<"usergrants">>).
+

@@ -9,6 +9,8 @@
          user_revoke/3, user_passwd/3, user_join/3, user_leave/3, user_auth/3,
          user_allowed/4, user_context/2,
 
+         resource_get/2,
+
          group_list/1, group_get/2, group_add/2, group_delete/2, group_grant/3,
          group_revoke/3]).
 
@@ -30,6 +32,7 @@
 -type bucket() :: binary().
 -type key() :: binary().
 -type resource() :: bucket() | {bucket(), key()}.
+-type resource_data() :: #resource{}.
 -type perm() :: string().
 -type perms() :: [perm()].
 -type user() :: #user{}.
@@ -123,7 +126,7 @@ user_allowed(#state{child=Child, handler=Mod}, Username, Resource, Perms) ->
 user_context(#state{child=Child, handler=Mod}, Username) ->
     Mod:user_context(Child, Username).
 
-%% _Group Functions
+%% Group Functions
 
 -spec group_list(state()) -> {ok, groupnames()}.
 group_list(#state{child=Child, handler=Mod}) ->
@@ -148,6 +151,12 @@ group_grant(State=#state{child=Child, handler=Mod}, Groupname, Grant=#grant{}) -
 -spec group_revoke(state(), groupname(), grant()) -> {ok, state()}.
 group_revoke(State=#state{child=Child, handler=Mod}, Groupname, Grant=#grant{}) ->
     update_child(State, Mod:group_revoke(Child, Groupname, Grant)).
+
+%% Resource Functions
+
+-spec resource_get(state(), resource()) -> {ok, resource_data()}.
+resource_get(#state{child=Child, handler=Mod}, Bucket) ->
+    Mod:resource_get(Child, Bucket).
 
 %% Internal
 

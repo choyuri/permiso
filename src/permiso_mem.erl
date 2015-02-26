@@ -9,6 +9,8 @@
          user_revoke/3, user_passwd/3, user_join/3, user_leave/3, user_auth/3,
          user_allowed/4, user_context/2,
 
+         resource_get/2,
+
          group_list/1, group_get/2, group_add/2, group_delete/2, group_grant/3,
          group_revoke/3,
         
@@ -33,7 +35,8 @@
 -type group() :: #group{}.
 -type bucket() :: binary().
 -type key() :: binary().
--type resource() :: bucket() | {bucket(), key()}.
+-type resource() :: bucket() | {bucket(), key()} | {bucket(), any}.
+-type resource_data() :: #resource{}.
 -type perm() :: string().
 -type perms() :: [perm()].
 -type user() :: #user{}.
@@ -220,6 +223,19 @@ group_revoke(State, Groupname, Grant) ->
                         {ok, State}
                 end,
     with_existing_group(State, Groupname, WithGroup).
+
+%% Resource Functions
+
+-spec resource_get(state(), resource()) -> {ok, resource_data()}.
+resource_get(#state{}, {_Bucket, _Stream}=Id) ->
+    % TODO
+    UserPerms = [],
+    GroupPerms = [],
+    Resource = #resource{id=Id, user_grants=UserPerms, group_grants=GroupPerms},
+    {ok, Resource};
+
+resource_get(State, Bucket) ->
+    resource_get(State, {Bucket, any}).
 
 %% Internal
 
