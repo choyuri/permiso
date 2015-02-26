@@ -50,7 +50,7 @@ new(Opts) ->
     {handler, Mod} = proplists:lookup(handler, Opts),
     {user_base, UserBase} = proplists:lookup(user_base, Opts),
     {user_created_cb, OnUserCreated} = proplists:lookup(user_created_cb, Opts),
-    Child = Mod:new([]),
+    {ok, Child} = Mod:new([]),
     State = #state{host=Host, port=Port, child=Child, handler=Mod,
                    user_base=UserBase, user_created_cb=OnUserCreated},
     {ok, State}.
