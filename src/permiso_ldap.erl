@@ -103,7 +103,7 @@ user_auth(#state{child=Child, handler=Mod, host=Host, port=Port,
           Username, Password) ->
     case eldap:open([Host], [{port, Port}]) of
         {ok, Pid} ->
-            DN = "uid=" ++ Username ++ "," ++ UserBase,
+            DN = "uid=" ++ list_to_binary(Username) ++ "," ++ UserBase,
             case eldap:simple_bind(Pid, DN, Password) of
                 ok ->
                     maybe_setup_user(Mod, Child, Username, Password, OnUserCreated),
