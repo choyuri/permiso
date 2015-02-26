@@ -40,7 +40,7 @@
 -type password() :: binary().
 -type user_context() :: term().
 
--spec new(new_opts()) -> state().
+-spec new(new_opts()) -> {ok, state()}.
 new(Opts) ->
     {host, Host} = proplists:lookup(host, Opts),
     {port, Port} = proplists:lookup(port, Opts),
@@ -48,8 +48,9 @@ new(Opts) ->
     {user_base, UserBase} = proplists:lookup(user_base, Opts),
     {user_created_cb, OnUserCreated} = proplists:lookup(user_created_cb, Opts),
     Child = Mod:new([]),
-    parse_opts(Opts, #state{host=Host, port=Port, child=Child, handler=Mod,
-                           user_base=UserBase, user_created_cb=OnUserCreated}).
+    State = #state{host=Host, port=Port, child=Child, handler=Mod,
+                   user_base=UserBase, user_created_cb=OnUserCreated},
+    {ok, State}.
 
 %% User Functions
 
@@ -149,10 +150,6 @@ group_revoke(State=#state{child=Child, handler=Mod}, Groupname, Grant=#grant{}) 
     update_child(State, Mod:group_revoke(Child, Groupname, Grant)).
 
 %% Internal
-
-parse_opts([], State) -> State.
-%parse_opts([{key, Val}|Opts], State) -> State;
-%    parse_opts(Opts, State#state{key=Val}).
 
 update_child(State, {ok, ChildState}) ->
     {ok, State#state{child=ChildState}};

@@ -45,11 +45,11 @@
 
 -type user_context() :: user().
 
--spec new(new_opts()) -> state().
-new(Opts) -> 
+-spec new(new_opts()) -> {ok, state()}.
+new(_Opts) ->
     Users = ets:new(users, []),
     Groups = ets:new(groups, []),
-    parse_opts(Opts, #state{users=Users, groups=Groups}).
+    {ok, #state{users=Users, groups=Groups}}.
 
 %% User Functions
 
@@ -222,10 +222,6 @@ group_revoke(State, Groupname, Grant) ->
     with_existing_group(State, Groupname, WithGroup).
 
 %% Internal
-
-parse_opts([], State) -> State.
-%parse_opts([{key, Val}|Opts], State) -> State;
-%    parse_opts(Opts, State#state{key=Val}).
 
 with_existing_user(State=#state{users=Users}, Username, Fun) ->
     case user_get(State, Username) of

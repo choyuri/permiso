@@ -47,9 +47,9 @@
 % it's context from riak_core_security
 -type user_context() :: {ctx, term()}.
 
--spec new(new_opts()) -> state().
-new(Opts) -> 
-    parse_opts(Opts, #state{}).
+-spec new(new_opts()) -> {ok, state()}.
+new(_Opts) ->
+    {ok, #state{}}.
 
 %% User Functions
 
@@ -212,11 +212,6 @@ group_revoke(State, Groupname,
     {ok, State}.
 
 %% Internal
-
-parse_opts([], State) -> State.
-%parse_opts([{key, Val}|Opts], State) -> State;
-%    parse_opts(Opts, State#state{key=Val}).
-
 
 fold(Fun, Accum, Type) ->
     riak_core_metadata:fold(Fun, Accum, {<<"security">>, Type}).
