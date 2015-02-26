@@ -7,7 +7,7 @@
 
 -export([user_list/1, user_get/2, user_add/2, user_delete/2, user_grant/3,
          user_revoke/3, user_passwd/3, user_join/3, user_leave/3, user_auth/3,
-         user_allowed/4,
+         user_allowed/4, user_context/2,
 
          group_list/1, group_get/2, group_add/2, group_delete/2, group_grant/3,
          group_revoke/3]).
@@ -38,6 +38,7 @@
 -type username() :: binary().
 -type usernames() :: [username()].
 -type password() :: binary().
+-type user_context() :: term().
 
 -spec new(new_opts()) -> state().
 new(Opts) ->
@@ -113,9 +114,13 @@ user_auth(#state{child=Child, handler=Mod, host=Host, port=Port,
             {error, unauthorized}
     end.
 
--spec user_allowed(state(), username(), resource(), perms()) -> boolean().
+-spec user_allowed(state(), username() | user_context(), resource(), perms()) -> boolean().
 user_allowed(#state{child=Child, handler=Mod}, Username, Resource, Perms) ->
     Mod:user_allowed(Child, Username, Resource, Perms).
+
+-spec user_context(state(), username()) -> {ok, user_context()} | {error, notfound}.
+user_context(#state{child=Child, handler=Mod}, Username) ->
+    Mod:user_context(Child, Username).
 
 %% _Group Functions
 

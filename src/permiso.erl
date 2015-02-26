@@ -24,6 +24,8 @@ behaviour_info(callbacks) ->
 
      {user_allowed, 4},
 
+     {user_context, 2},
+
      %{user_set_resource, 4},
      %{user_get_resource, 3},
      %{user_claim_resource, 4},

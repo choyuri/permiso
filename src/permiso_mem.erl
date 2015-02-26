@@ -7,7 +7,7 @@
 
 -export([user_list/1, user_get/2, user_add/2, user_delete/2, user_grant/3,
          user_revoke/3, user_passwd/3, user_join/3, user_leave/3, user_auth/3,
-         user_allowed/4,
+         user_allowed/4, user_context/2,
 
          group_list/1, group_get/2, group_add/2, group_delete/2, group_grant/3,
          group_revoke/3,
@@ -42,6 +42,8 @@
 -type username() :: binary().
 -type usernames() :: [username()].
 -type password() :: binary().
+
+-type user_context() :: user().
 
 -spec new(new_opts()) -> state().
 new(Opts) -> 
@@ -151,17 +153,18 @@ user_auth(State, Username, Password) ->
                                end
                        end).
 
--spec user_allowed(state(), username(), resource(), perms()) -> boolean().
+-spec user_allowed(state(), username() | user_context(), resource(), perms()) -> boolean().
+user_allowed(State=#state{}, User=#user{}, Resource, Permissions) ->
+    check_user_allowed(State, User, Resource, Permissions);
 user_allowed(State=#state{}, Username, Resource, Permissions) ->
-    WithUser = fun (_Users, #user{grants=Grants, groups=Groups}) ->
-                       case permiso:match_permissions(Grants, Resource, Permissions) of
-                           [] -> true;
-                           Remaining ->
-                               match_groups_permissions(State, Groups,
-                                                        Resource, Remaining)
-                       end
+    WithUser = fun (_Users, User) ->
+                       check_user_allowed(State, User, Resource, Permissions)
                end,
     with_existing_user(State, Username, WithUser).
+
+-spec user_context(state(), username()) -> {ok, user_context()} | {error, notfound}.
+user_context(State, Username) ->
+    user_get(State, Username).
 
 -spec clear(state()) -> {ok, state()}.
 clear(State=#state{users=Users, groups=Groups}) ->
@@ -315,4 +318,11 @@ del_grant(Grant=#grant{resource=Resource, permissions=Perms}, Grants) ->
        true ->
            NewGrant = Grant#grant{permissions=NewPerms},
            [{Resource, NewGrant}|NewGrants]
+    end.
+
+check_user_allowed(State, #user{grants=Grants, groups=Groups}, Resource, Permissions) ->
+    case permiso:match_permissions(Grants, Resource, Permissions) of
+        [] -> true;
+        Remaining ->
+            match_groups_permissions(State, Groups, Resource, Remaining)
     end.

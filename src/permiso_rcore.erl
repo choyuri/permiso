@@ -9,7 +9,7 @@
 
 -export([user_list/1, user_get/2, user_add/2, user_delete/2, user_grant/3,
          user_revoke/3, user_passwd/3, user_join/3, user_leave/3, user_auth/3,
-         user_allowed/4,
+         user_allowed/4, user_context/2,
 
          group_list/1, group_get/2, group_add/2, group_delete/2, group_grant/3,
          group_revoke/3]).
@@ -44,6 +44,8 @@
 -type username() :: binary().
 -type usernames() :: [username()].
 -type password() :: binary().
+% it's context from riak_core_security
+-type user_context() :: {ctx, term()}.
 
 -spec new(new_opts()) -> state().
 new(Opts) -> 
@@ -143,15 +145,27 @@ user_auth(#state{}, Username, Password) ->
         {error, _Reason}=Error -> Error
     end.
 
--spec user_allowed(state(), username(), resource(), perms()) -> boolean().
+-spec user_allowed(state(), username() | user_context(), resource(), perms()) -> boolean().
+user_allowed(#state{}, {ctx, Ctx}, Resource, Perms) ->
+    check_ctx_authorized(Perms, Resource, Ctx);
 user_allowed(#state{}, Username, Resource, Perms) ->
     case get_security_context(Username) of
         {ok, Ctx} ->
-            case check_authorized(Perms, Resource, Ctx) of
-                ok ->  true;
-                _Error -> false
-            end;
+            check_ctx_authorized(Perms, Resource, Ctx);
         {error, notfound} -> false
+    end.
+
+check_ctx_authorized(Perms, Resource, Ctx) ->
+    case check_authorized(Perms, Resource, Ctx) of
+        ok ->  true;
+        _Error -> false
+    end.
+
+-spec user_context(state(), username()) -> {ok, user_context()} | {error, notfound}.
+user_context(_State, Username) ->
+    case get_security_context(Username) of
+        {ok, Ctx} -> {ok, {ctx, Ctx}};
+        Other -> Other
     end.
 
 %% _Group Functions
@@ -319,6 +333,7 @@ revoke(<<"*">>, Bucket, Key, Perms) ->
 revoke(Role, Bucket, Key, Perms) ->
     riak_core_security:add_revoke([Role], {Bucket, Key}, Perms).
 
+-spec get_security_context(username()) -> {ok, user_context()} | {error, notfound}.
 get_security_context(Username) ->
     % TODO: don't try catch
     % TODO: this is private
