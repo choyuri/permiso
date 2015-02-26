@@ -327,14 +327,6 @@ get_security_context(Username) ->
         {error, notfound}
     end.
 
-check_authorized(Perm, Thing, Ctx) ->
-    case riak_core_security:check_permissions({Perm, Thing}, Ctx) of
-        {true, _NewCtx} ->
-            ok;
-        Other ->
-            Other
-    end.
-
 user_info(Username) ->
     IGs = sets:new(),
     Res = fold_user(fun ({"groups", Groups}, {GsIn}) ->
@@ -352,5 +344,10 @@ wrap_ok(State, ok) -> {ok, State};
 wrap_ok(_State, Other) -> Other.
 
 check_ctx_authorized(Perms, Resource, Ctx) ->
-    lists:all(fun (Perm) -> check_authorized(Perm, Resource, Ctx) == ok end,
-              Perms).
+    RPerms = lists:map(fun (Perm) -> {Resource, Perm} end, Perms),
+    case riak_core_security:check_permissions(RPerms, Ctx) of
+        {true, _NewCtx} ->
+            true;
+        _Other ->
+            false
+    end.
