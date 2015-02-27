@@ -21,7 +21,7 @@
               group_list/1, group_get/2, group_add/2, group_delete/2,
               group_grant/3, group_revoke/3]).
 
--record(state, {host, port, child, handler, user_base, user_created_cb}).
+-record(state, {host, port, child, handler, user_base, user_prefix, user_created_cb}).
 
 -include("permiso.hrl").
 
@@ -49,10 +49,12 @@ new(Opts) ->
     {port, Port} = proplists:lookup(port, Opts),
     {handler, Mod} = proplists:lookup(handler, Opts),
     {user_base, UserBase} = proplists:lookup(user_base, Opts),
+    UserPrefix = proplists:get_value(user_prefix, Opts, "uid="),
     {user_created_cb, OnUserCreated} = proplists:lookup(user_created_cb, Opts),
     {ok, Child} = Mod:new([]),
     State = #state{host=Host, port=Port, child=Child, handler=Mod,
-                   user_base=UserBase, user_created_cb=OnUserCreated},
+                   user_base=UserBase, user_prefix=UserPrefix,
+                   user_created_cb=OnUserCreated},
     {ok, State}.
 
 %% User Functions
@@ -99,14 +101,20 @@ user_auth(#state{}, _Username, "") ->
 user_auth(#state{}, _Username, <<"">>) ->
     {error, empty_password};
 user_auth(#state{child=Child, handler=Mod, host=Host, port=Port,
-                 user_base=UserBase, user_created_cb=OnUserCreated},
+                 user_base=UserBase, user_prefix=UserPrefix,
+                 user_created_cb=OnUserCreated},
           Username, Password) ->
     case eldap:open([Host], [{port, Port}]) of
         {ok, Pid} ->
-            DN = "uid=" ++ binary_to_list(Username) ++ "," ++ UserBase,
+            Sep = if UserBase == "" -> "";
+                     true -> ","
+                  end,
+            DN = UserPrefix ++ binary_to_list(Username) ++ Sep ++ UserBase,
+            lager:info("trying auth with ~p", [DN]),
             case eldap:simple_bind(Pid, DN, Password) of
                 ok ->
                     maybe_setup_user(Mod, Child, Username, Password, OnUserCreated),
+                    eldap:close(Pid),
                     Mod:user_context(Child, Username);
                 Other ->
                     lager:info("Error authenticating user ~p: ~p",
