@@ -10,6 +10,7 @@
          user_allowed/4, user_context/2,
 
          resource_get/2,
+         username/2,
 
          group_list/1, group_get/2, group_add/2, group_delete/2, group_grant/3,
          group_revoke/3]).
@@ -217,6 +218,12 @@ resource_get(#state{}, {Bucket, Stream}=Id) ->
 
 resource_get(State, Bucket) ->
     resource_get(State, {Bucket, any}).
+
+%% Context Functions
+
+-spec username(state(), user_context()) -> {ok, username()}.
+username(#state{}, {ctx, Ctx}) ->
+    {ok, element(2, Ctx)}.
 
 %% Internal
 

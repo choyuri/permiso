@@ -10,6 +10,7 @@
          user_allowed/4, user_context/2,
 
          resource_get/2,
+         username/2,
 
          group_list/1, group_get/2, group_add/2, group_delete/2, group_grant/3,
          group_revoke/3]).
@@ -158,6 +159,12 @@ group_revoke(State=#state{child=Child, handler=Mod}, Groupname, Grant=#grant{}) 
 -spec resource_get(state(), resource()) -> {ok, resource_data()}.
 resource_get(#state{child=Child, handler=Mod}, Bucket) ->
     Mod:resource_get(Child, Bucket).
+
+%% Context Functions
+
+-spec username(state(), user_context()) -> {ok, username()}.
+username(#state{child=Child, handler=Mod}, Ctx) ->
+    Mod:username(Child, Ctx).
 
 %% Internal
 

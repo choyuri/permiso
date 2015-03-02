@@ -34,6 +34,8 @@ behaviour_info(callbacks) ->
 
      {resource_get, 2},
 
+     {username, 2},
+
      {group_list, 1},
      {group_get, 2},
      {group_add, 2},
