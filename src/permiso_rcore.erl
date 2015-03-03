@@ -92,14 +92,14 @@ user_delete(State=#state{}, Username) ->
 -spec user_grant(state(), username(), grant()) -> {ok, state()}.
 user_grant(State=#state{}, Username,
            #grant{resource={Bucket, Key}, permissions=Perms}) ->
-    grant(Username, Bucket, Key, Perms),
-    {ok, State}.
+    Result = grant(Username, Bucket, Key, Perms),
+    {Result, State}.
 
 -spec user_revoke(state(), username(), grant()) -> {ok, state()}.
 user_revoke(State=#state{}, Username,
            #grant{resource={Bucket, Key}, permissions=Perms}) ->
-    revoke(Username, Bucket, Key, Perms),
-    {ok, State}.
+    Result = revoke(Username, Bucket, Key, Perms),
+    {Result, State}.
 
 -spec user_passwd(state(), string(), password()) -> {ok, state()} | {error, term()}.
 user_passwd(State=#state{}, Username, Password) ->
