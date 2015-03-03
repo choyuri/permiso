@@ -87,11 +87,7 @@ user_add(State=#state{}, #user{username=Username, password=Password,
 
 -spec user_delete(state(), string()) -> {ok, state()}.
 user_delete(State=#state{}, Username) ->
-    case riak_core_security:del_user(Username) of
-        ok -> {ok, State};
-        {error, role_exists} -> {error, duplicate};
-        Other -> Other
-    end.
+    wrap_ok(State, riak_core_security:del_user(Username)).
 
 -spec user_grant(state(), username(), grant()) -> {ok, state()}.
 user_grant(State=#state{}, Username,
@@ -190,7 +186,11 @@ group_get(#state{}, Groupname) ->
 
 -spec group_add(state(), group()) -> {ok, state()}.
 group_add(State=#state{}, #group{name=Groupname}) ->
-    wrap_ok(State, riak_core_security:add_group(Groupname, [])).
+    case riak_core_security:add_group(Groupname, []) of
+        ok -> {ok, State};
+        {error, role_exists} -> {error, duplicate};
+        Other -> Other
+    end.
 
 -spec group_delete(state(), string()) -> {ok, state()}.
 group_delete(State=#state{}, Groupname) ->
