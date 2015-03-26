@@ -13,7 +13,7 @@
          username/2,
 
          group_list/1, group_get/2, group_add/2, group_delete/2, group_grant/3,
-         group_revoke/3,
+         group_revoke/3, group_inherit/3,
         
          clear/1]).
 
@@ -22,7 +22,7 @@
               user_auth/3, user_allowed/3,
 
               group_list/1, group_get/2, group_add/2, group_delete/2,
-              group_grant/3, group_revoke/3,
+              group_grant/3, group_revoke/3, group_inherit/3,
              
               clear/1]).
 
@@ -224,6 +224,11 @@ group_revoke(State, Groupname, Grant) ->
                         {ok, State}
                 end,
     with_existing_group(State, Groupname, WithGroup).
+
+-spec group_inherit(state(), groupname(), [groupname()]) -> {ok, state()}.
+group_inherit(State, _Groupname, _Groups) ->
+    % TODO
+    {ok, State}.
 
 %% Context Functions
 

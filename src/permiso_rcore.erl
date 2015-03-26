@@ -13,14 +13,14 @@
          username/2,
 
          group_list/1, group_get/2, group_add/2, group_delete/2, group_grant/3,
-         group_revoke/3]).
+         group_revoke/3, group_inherit/3]).
 
 -ignore_xref([user_list/1, user_get/2, user_add/2, user_delete/2, user_grant/3,
               user_revoke/3, user_passwd/3, user_join/3, user_leave/3,
               user_auth/3, user_allowed/3,
 
               group_list/1, group_get/2, group_add/2, group_delete/2,
-              group_grant/3, group_revoke/3]).
+              group_grant/3, group_revoke/3, group_inherit/3]).
 
 -record(state, {}).
 
@@ -206,6 +206,11 @@ group_grant(State, Groupname,
 group_revoke(State, Groupname,
             #grant{resource={Bucket, Key}, permissions=Perms}) ->
     revoke(Groupname, Bucket, Key, Perms),
+    {ok, State}.
+
+-spec group_inherit(state(), groupname(), [groupname()]) -> {ok, state()}.
+group_inherit(State, Groupname, Groups) ->
+    riak_core_security:alter_group(Groupname, [{"groups", Groups}]),
     {ok, State}.
 
 %% Resource Functions

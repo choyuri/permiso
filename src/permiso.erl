@@ -36,6 +36,7 @@ behaviour_info(callbacks) ->
 
      {username, 2},
 
+     {group_inherit, 3},
      {group_list, 1},
      {group_get, 2},
      {group_add, 2},
