@@ -199,19 +199,15 @@ ldap_auth(#state{child=Child, handler=Mod, host=Host, port=Port,
                      true -> ","
                   end,
             DN = UserPrefix ++ binary_to_list(Username) ++ Sep ++ UserBase,
-            lager:info("trying auth with ~p", [DN]),
             case eldap:simple_bind(Pid, DN, Password) of
                 ok ->
                     maybe_setup_user(Mod, Child, Username, Password, OnUserCreated),
                     eldap:close(Pid),
                     Mod:user_context(Child, Username);
                 Other ->
-                    lager:info("Error authenticating user ~p: ~p",
-                               [Username, Other])
+                    Other
             end;
-        Other ->
-            lager:info("Error authenticating user on open ~p: ~p",
-                       [Username, Other]),
+        _Other ->
             {error, unauthorized}
     end.
 
