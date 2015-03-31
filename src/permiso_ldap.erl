@@ -49,7 +49,7 @@
 new(Opts) ->
     {host, Host} = proplists:lookup(host, Opts),
     {port, Port} = proplists:lookup(port, Opts),
-    Mod = proplists:lookup(handler, Opts, permiso_rcore),
+    Mod = proplists:get_value(handler, Opts, permiso_rcore),
     UserBase = proplists:get_value(user_base, Opts, ""),
     UserPrefix = proplists:get_value(user_prefix, Opts, "uid="),
     {user_created_cb, OnUserCreated} = proplists:lookup(user_created_cb, Opts),
