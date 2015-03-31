@@ -50,7 +50,10 @@ new(Opts) ->
     {host, Host} = proplists:lookup(host, Opts),
     {port, Port} = proplists:lookup(port, Opts),
     {handler, Mod} = proplists:lookup(handler, Opts),
-    {user_base, UserBase} = proplists:lookup(user_base, Opts),
+    UserBase = case proplists:lookup(user_base, Opts) of
+                   {user_base, UB} -> UB;
+                   none -> ""
+               end,
     UserPrefix = proplists:get_value(user_prefix, Opts, "uid="),
     {user_created_cb, OnUserCreated} = proplists:lookup(user_created_cb, Opts),
     LocalAuthSuffix = proplists:get_value(local_auth_suffix, Opts),
