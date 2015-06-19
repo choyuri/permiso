@@ -81,8 +81,8 @@ user_add(State=#state{}, #user{username=Username, password=Password,
                                groups=Groups}) ->
     case create_user(Username, Password, Groups) of
         ok -> {ok, State};
-        {error, role_exists} -> {error, duplicate};
-        Other -> Other
+        {error, role_exists} -> {{error, duplicate}, State};
+        Other -> {Other, State}
     end.
 
 -spec user_delete(state(), string()) -> {ok, state()}.
@@ -119,7 +119,7 @@ user_join(State=#state{}, Username, Groupname) ->
                                                                 [{"groups", NewGroups}]))
             end;
         {notfound, _Acc0} ->
-            {error, notfound}
+            {{error, notfound}, State}
     end.
 
 -spec user_leave(state(), username(), groupname()) -> {ok, state()} | {error, notfound}.
@@ -135,7 +135,7 @@ user_leave(State=#state{}, Username, Groupname) ->
                    {ok, State}
             end;
         {notfound, _Acc0} ->
-            {error, notfound}
+            {{error, notfound}, State}
     end.
 
 -spec user_auth(state(), username(), password()) -> {ok, user_context()} | {error, term()}.
@@ -188,8 +188,8 @@ group_get(#state{}, Groupname) ->
 group_add(State=#state{}, #group{name=Groupname}) ->
     case riak_core_security:add_group(Groupname, []) of
         ok -> {ok, State};
-        {error, role_exists} -> {error, duplicate};
-        Other -> Other
+        {error, role_exists} -> {{error, duplicate}, State};
+        Other -> {Other, State}
     end.
 
 -spec group_delete(state(), string()) -> {ok, state()}.

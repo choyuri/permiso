@@ -73,7 +73,7 @@ user_get(#state{users=Users}, Username) ->
 -spec user_add(state(), user()) -> {ok, state()} | {error, duplicate} | {error, term()}.
 user_add(State=#state{users=Users}, User=#user{username=Username}) ->
     case user_get(State, Username) of
-        {ok, _ExistingUser} -> {error, duplicate};
+        {ok, _ExistingUser} -> {{error, duplicate}, State};
         {error, notfound} ->
             ets:insert(Users, {Username, User}),
             {ok, State}
@@ -192,7 +192,7 @@ group_get(#state{groups=Groups}, Groupname) ->
 -spec group_add(state(), group()) -> {ok, state()} | {error, duplicate}.
 group_add(State=#state{groups=Groups}, Group=#group{name=Groupname}) ->
     case ets:lookup(Groups, Groupname) of
-        [{Groupname, _ExistingGroup}] -> {error, duplicate};
+        [{Groupname, _ExistingGroup}] -> {{error, duplicate}, State};
         [] ->
             upsert_group(Groups, Group),
             {ok, State}
